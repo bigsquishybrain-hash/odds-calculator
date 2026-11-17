@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1b1d21">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Odds">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>Odds Ratio Calculator</title>
+<style>
+  :root { --bg:#1b1d21; --panel:#26292f; --line:#3a3e46; --text:#e8e6e1; --dim:#9a9ca3; --atk:#d9534f; --def:#4a90d9; --acc:#e0b354; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; background:var(--bg); color:var(--text); font:16px/1.4 system-ui, -apple-system, Segoe UI, sans-serif; display:flex; justify-content:center; padding:calc(24px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left)); -webkit-tap-highlight-color:transparent; }
+  .card { width:100%; max-width:520px; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:22px; }
+  h1 { margin:0 0 4px; font-size:20px; letter-spacing:.3px; }
+  .sub { color:var(--dim); font-size:13px; margin-bottom:18px; }
+  .sides { display:grid; grid-template-columns:1fr auto 1fr; gap:12px; align-items:end; }
+  label.side { display:flex; flex-direction:column; gap:6px; font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:.8px; }
+  label.side.atk { color:var(--atk); } label.side.def { color:var(--def); }
+  input.val { width:100%; font-size:28px; font-weight:700; text-align:center; padding:12px 8px; border-radius:10px; border:2px solid var(--line); background:#1f2126; color:var(--text); outline:none; }
+  .atk input.val:focus { border-color:var(--atk); } .def input.val:focus { border-color:var(--def); }
+  .vs { padding-bottom:18px; color:var(--dim); font-weight:700; }
+  .hint { color:var(--dim); font-size:12px; margin-top:6px; min-height:16px; text-align:center; }
+  .opts { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:18px 0; flex-wrap:wrap; }
+  .seg { display:flex; align-items:center; gap:6px; }
+  .seglbl { color:var(--dim); font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:.8px; margin-right:4px; }
+  .segbtn { min-width:76px; }
+  .segbtn.on { background:var(--acc); border-color:var(--acc); color:#1b1d21; }
+  .segbtn.on:hover { background:#ebc46c; }
+  button { font:inherit; font-weight:600; padding:10px 20px; border-radius:10px; border:1px solid var(--line); background:#33373f; color:var(--text); cursor:pointer; }
+  button:hover { background:#3d424b; }
+  .result { text-align:center; border-top:1px solid var(--line); padding-top:18px; }
+  .odds { font-size:64px; font-weight:800; letter-spacing:2px; color:var(--acc); line-height:1.1; min-height:72px; }
+  .odds.muted { color:var(--dim); font-size:28px; min-height:72px; display:flex; align-items:center; justify-content:center; }
+  .details { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:14px; }
+  .stat { background:#1f2126; border:1px solid var(--line); border-radius:8px; padding:8px 4px; }
+  .stat b { display:block; font-size:18px; }
+  .stat span { color:var(--dim); font-size:11px; text-transform:uppercase; letter-spacing:.6px; }
+  .note { color:var(--dim); font-size:12px; margin-top:14px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Odds Ratio Calculator</h1>
+  <div class="sub">Attacker strength vs. defender strength, boiled down to a combat results table column. Add stacks with + (e.g. 4+3+6).</div>
+
+  <div class="sides">
+    <label class="side atk">Attacker
+      <input class="val" id="atk" inputmode="decimal" autocomplete="off" placeholder="0">
+    </label>
+    <div class="vs">vs</div>
+    <label class="side def">Defender
+      <input class="val" id="def" inputmode="decimal" autocomplete="off" placeholder="0">
+    </label>
+  </div>
+  <div class="sides"><div class="hint" id="atkSum"></div><div></div><div class="hint" id="defSum"></div></div>
+
+  <div class="opts">
+    <div class="seg" role="group" aria-label="Rounding">
+      <span class="seglbl">Round</span>
+      <button type="button" id="btnDown" class="segbtn">Down</button>
+      <button type="button" id="btnUp" class="segbtn">Up</button>
+    </div>
+    <button id="clear" type="button">Clear</button>
+  </div>
+
+  <div class="result">
+    <div class="odds muted" id="odds">Enter both values</div>
+    <div class="details">
+      <div class="stat"><b id="exact">–</b><span>Exact ratio</span></div>
+      <div class="stat"><b id="raw">–</b><span>Unrounded</span></div>
+      <div class="stat"><b id="diff">–</b><span>Differential</span></div>
+    </div>
+    <div class="note">Straight rounding of the ratio's number: Down drops the fraction (1.67:1 becomes 1:1, 1:1.67 becomes 1:1), Up bumps it to the next whole number (2:1 and 1:2).</div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const atk = $('atk'), def = $('def');
+let mode = 'down';
+function setMode(m) {
+  mode = m;
+  $('btnDown').classList.toggle('on', m === 'down'); $('btnUp').classList.toggle('on', m === 'up');
+  $('btnDown').setAttribute('aria-pressed', m === 'down'); $('btnUp').setAttribute('aria-pressed', m === 'up');
+  try { localStorage.setItem('oddsRound', m); } catch (e) {}
+  compute();
+}
+const EPS = 1e-9;
+
+function parse(str) {
+  const s = str.replace(/\s+/g, '');
+  if (!s) return { empty: true };
+  if (!/^\d*\.?\d+(\+\d*\.?\d+)*\+?$/.test(s)) return { bad: true };
+  const parts = s.split('+').filter(Boolean).map(Number);
+  return { value: parts.reduce((a, b) => a + b, 0), parts: parts.length };
+}
+const fmt = n => Number.isInteger(n) ? String(n) : (Math.round(n * 100) / 100).toString();
+
+function compute() {
+  const a = parse(atk.value), d = parse(def.value);
+  $('atkSum').textContent = a.bad ? 'Not a number, genius' : (a.parts > 1 ? '= ' + fmt(a.value) : '');
+  $('defSum').textContent = d.bad ? 'Not a number, genius' : (d.parts > 1 ? '= ' + fmt(d.value) : '');
+  const odds = $('odds');
+  const setStats = (e, r, df) => { $('exact').textContent = e; $('raw').textContent = r; $('diff').textContent = df; };
+
+  if (a.empty || d.empty || a.bad || d.bad) {
+    odds.className = 'odds muted'; odds.textContent = 'Enter both values'; setStats('–', '–', '–'); return;
+  }
+  const A = a.value, D = d.value;
+  const diffTxt = (A - D >= 0 ? '+' : '') + fmt(A - D);
+  if (A === 0 && D === 0) { odds.className = 'odds muted'; odds.textContent = 'Nobody showed up'; setStats('0:0', '–', '0'); return; }
+  if (D === 0) { odds.className = 'odds muted'; odds.textContent = 'Undefended: automatic win'; setStats(fmt(A) + ':0', '∞', diffTxt); return; }
+  if (A === 0) { odds.className = 'odds muted'; odds.textContent = 'No attack'; setStats('0:' + fmt(D), '0', diffTxt); return; }
+
+  const up = mode === 'up';
+  let text, rawTxt;
+  if (A >= D) {
+    const r = A / D;
+    const n = up ? Math.ceil(r - EPS) : Math.floor(r + EPS);
+    text = Math.max(1, n) + ':1';
+    rawTxt = fmt(r) + ':1';
+  } else {
+    const r = D / A;
+    const n = up ? Math.ceil(r - EPS) : Math.floor(r + EPS);
+    text = '1:' + Math.max(1, n);
+    rawTxt = '1:' + fmt(r);
+  }
+  const g = gcd(A, D);
+  odds.className = 'odds'; odds.textContent = text;
+  setStats(g ? fmt(A / g) + ':' + fmt(D / g) : fmt(A) + ':' + fmt(D), rawTxt, diffTxt);
+}
+function gcd(a, b) {
+  if (!Number.isInteger(a) || !Number.isInteger(b)) return 0;
+  while (b) [a, b] = [b, a % b];
+  return a;
+}
+
+[atk, def].forEach(el => el.addEventListener('input', compute));
+$('btnDown').addEventListener('click', () => setMode('down'));
+$('btnUp').addEventListener('click', () => setMode('up'));
+$('clear').addEventListener('click', () => { atk.value = ''; def.value = ''; compute(); atk.focus(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('clear').click(); });
+let saved = 'down';
+try { saved = localStorage.getItem('oddsRound') === 'up' ? 'up' : 'down'; } catch (e) {}
+setMode(saved);
+if (!matchMedia('(pointer: coarse)').matches) atk.focus();
+if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+</script>
+</body>
+</html>
