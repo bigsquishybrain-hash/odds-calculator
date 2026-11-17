@@ -2,7 +2,7 @@
 
 Wargame combat odds (3:1, 1:2...) from Attacker and Defender values. Round Down or Up, Clear button, stack adding (4+3+6). Works offline once loaded.
 
-Live: GitHub Pages, from this repo's main branch.
+Live: https://bigsquishybrain-hash.github.io/odds-calculator/ (GitHub Pages, main branch, root folder).
 
 ## Put it on the iPad / phone
 - **iPhone/iPad:** open the Pages link in Safari, tap Share, then **Add to Home Screen**.
