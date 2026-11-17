@@ -29,7 +29,7 @@
   .opts { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:18px 0; flex-wrap:wrap; }
   .seg { display:flex; align-items:center; gap:6px; }
   .seglbl { color:var(--dim); font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:.8px; margin-right:4px; }
-  .segbtn { min-width:76px; }
+  .segbtn { min-width:68px; padding:10px 14px; }
   .segbtn.on { background:var(--acc); border-color:var(--acc); color:#1b1d21; }
   .segbtn.on:hover { background:#ebc46c; }
   button { font:inherit; font-weight:600; padding:10px 20px; border-radius:10px; border:1px solid var(--line); background:#33373f; color:var(--text); cursor:pointer; }
@@ -64,6 +64,7 @@
     <div class="seg" role="group" aria-label="Rounding">
       <span class="seglbl">Round</span>
       <button type="button" id="btnDown" class="segbtn">Down</button>
+      <button type="button" id="btnNone" class="segbtn">None</button>
       <button type="button" id="btnUp" class="segbtn">Up</button>
     </div>
     <button id="clear" type="button">Clear</button>
@@ -76,7 +77,7 @@
       <div class="stat"><b id="raw">–</b><span>Unrounded</span></div>
       <div class="stat"><b id="diff">–</b><span>Differential</span></div>
     </div>
-    <div class="note">Straight rounding of the ratio's number: Down drops the fraction (1.67:1 becomes 1:1, 1:1.67 becomes 1:1), Up bumps it to the next whole number (2:1 and 1:2).</div>
+    <div class="note">Straight rounding of the ratio's number: Down drops the fraction (1.67:1 becomes 1:1, 1:1.67 becomes 1:1), Up bumps it to the next whole number (2:1 and 1:2), None shows the raw ratio to two decimals.</div>
   </div>
 </div>
 
@@ -86,8 +87,7 @@ const atk = $('atk'), def = $('def');
 let mode = 'down';
 function setMode(m) {
   mode = m;
-  $('btnDown').classList.toggle('on', m === 'down'); $('btnUp').classList.toggle('on', m === 'up');
-  $('btnDown').setAttribute('aria-pressed', m === 'down'); $('btnUp').setAttribute('aria-pressed', m === 'up');
+  for (const k of ['down', 'none', 'up']) { const b = $('btn' + k[0].toUpperCase() + k.slice(1)); b.classList.toggle('on', m === k); b.setAttribute('aria-pressed', m === k); }
   try { localStorage.setItem('oddsRound', m); } catch (e) {}
   compute();
 }
@@ -118,17 +118,17 @@ function compute() {
   if (D === 0) { odds.className = 'odds muted'; odds.textContent = 'Undefended: automatic win'; setStats(fmt(A) + ':0', '∞', diffTxt); return; }
   if (A === 0) { odds.className = 'odds muted'; odds.textContent = 'No attack'; setStats('0:' + fmt(D), '0', diffTxt); return; }
 
-  const up = mode === 'up';
+  const up = mode === 'up', none = mode === 'none';
   let text, rawTxt;
   if (A >= D) {
     const r = A / D;
     const n = up ? Math.ceil(r - EPS) : Math.floor(r + EPS);
-    text = Math.max(1, n) + ':1';
+    text = none ? fmt(r) + ':1' : Math.max(1, n) + ':1';
     rawTxt = fmt(r) + ':1';
   } else {
     const r = D / A;
     const n = up ? Math.ceil(r - EPS) : Math.floor(r + EPS);
-    text = '1:' + Math.max(1, n);
+    text = none ? '1:' + fmt(r) : '1:' + Math.max(1, n);
     rawTxt = '1:' + fmt(r);
   }
   const g = gcd(A, D);
@@ -143,11 +143,12 @@ function gcd(a, b) {
 
 [atk, def].forEach(el => el.addEventListener('input', compute));
 $('btnDown').addEventListener('click', () => setMode('down'));
+$('btnNone').addEventListener('click', () => setMode('none'));
 $('btnUp').addEventListener('click', () => setMode('up'));
 $('clear').addEventListener('click', () => { atk.value = ''; def.value = ''; compute(); atk.focus(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') $('clear').click(); });
 let saved = 'down';
-try { saved = localStorage.getItem('oddsRound') === 'up' ? 'up' : 'down'; } catch (e) {}
+try { const v = localStorage.getItem('oddsRound'); if (v === 'up' || v === 'none') saved = v; } catch (e) {}
 setMode(saved);
 if (!matchMedia('(pointer: coarse)').matches) atk.focus();
 if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
